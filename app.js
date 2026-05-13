@@ -46,7 +46,7 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("GET /destination error:", error);
+                // console.error("GET /destination error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -82,7 +82,7 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("GET /destination error:", error);
+                // console.error("GET /destination error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -106,7 +106,7 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("GET /featured-destinations error:", error);
+                // console.error("GET /featured-destinations error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -137,7 +137,7 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("POST /destination error:", error);
+                // console.error("POST /destination error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -190,7 +190,7 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("PATCH /destination error:", error);
+                // console.error("PATCH /destination error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -231,7 +231,7 @@ async function run() {
         app.get("/testimonials", async (req, res) => {
             try {
                 const result = await testimonialCollection.find().toArray();
-                console.log(result);
+                // console.log(result);
                 return res.status(200).json({
                     success: true,
                     message: "Destinations fetched successfully",
@@ -239,7 +239,65 @@ async function run() {
                 });
 
             } catch (error) {
-                console.error("GET /testimonials error:", error);
+                // console.error("GET /testimonials error:", error);
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Internal server error",
+                });
+            }
+        });
+
+        const profileCollection = db.collection("user");
+
+        app.get("/profiles", async (req, res) => {
+            try {
+                const result = await profileCollection.find().toArray();
+                // console.log(result);
+                return res.status(200).json({
+                    success: true,
+                    message: "Profiles fetched successfully",
+                    data: result,
+                });
+
+            } catch (error) {
+                // console.error("GET /Profiles error:", error);
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Internal server error",
+                });
+            }
+        });
+
+        app.get("/profile/:slug", async (req, res)  => {
+            try {
+                const {slug} = req.params;
+
+                const normalizedSlug = slug.toLowerCase().trim();
+
+                const safeSlug = escapeRegex(normalizedSlug);
+
+                const result = await profileCollection.findOne({
+                    slug: { $regex: `^${safeSlug}$`, $options: "i" }
+                });
+
+                if (!result) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Profile not found",
+                    });
+                }
+                
+                // console.log(result);
+                return res.status(200).json({
+                    success: true,
+                    message: "Profile fetched successfully",
+                    data: result,
+                });
+
+            } catch (error) {
+                // console.error("GET /destination error:", error);
 
                 return res.status(500).json({
                     success: false,
@@ -248,7 +306,7 @@ async function run() {
             }
         });
     } catch (error) {
-        console.error(error);
+        // console.error(error);
     }
 }
 run().catch(console.dir);
