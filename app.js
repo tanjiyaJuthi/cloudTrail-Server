@@ -34,6 +34,9 @@ async function run() {
 
         const db = client.db('wanderlust');
         const destinationCollection = db.collection('destinations');
+        const profileCollection = db.collection("user");
+        const testimonialCollection = db.collection('testimonials');
+        const bookingCollection = db.collection("bookings");
 
         app.get("/destination", async (req, res) => {
             try {
@@ -225,8 +228,7 @@ async function run() {
             }
         });
 
-        
-        const testimonialCollection = db.collection('testimonials');
+
 
         app.get("/testimonials", async (req, res) => {
             try {
@@ -248,7 +250,7 @@ async function run() {
             }
         });
 
-        const profileCollection = db.collection("user");
+
 
         app.get("/profiles", async (req, res) => {
             try {
@@ -302,6 +304,136 @@ async function run() {
                 return res.status(500).json({
                     success: false,
                     message: "Internal server error",
+                });
+            }
+        });
+
+
+
+        app.post("/booking", async (req, res) => {
+            try {
+                const {
+                    userId,
+                    userName,
+                    userImage,
+                    destinationId,
+                    destinationSlug,
+                    destinationName,
+                    destinationCountry,
+                    destinationImageUrl,
+                    departureDate,
+                    memberNumber,
+                    totalPrice
+                } = req.body;
+
+                const seats = Number(memberNumber || 1);
+
+                if (!userId || !destinationId || !departureDate) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Missing required fields",
+                    });
+                }
+
+                const session = client.startSession();
+
+                let result;
+
+                await session.withTransaction(async () => {
+                    const destination = await destinationCollection.findOne(
+                        { _id: new ObjectId(destinationId) },
+                        { session }
+                    );
+
+                    if (!destination) {
+                        throw new Error("Destination not found");
+                    }
+
+                    const capacity = destination.capacity || 0;
+                    const booked = destination.bookedSeats || 0;
+
+                    const remaining = capacity - booked;
+
+                    if (remaining < seats) {
+                        throw new Error(
+                            `Only ${remaining} seats left`
+                        );
+                    }
+
+                    const booking = await bookingCollection.insertOne({
+                        userId,
+                        userName,
+                        userImage,
+                        destinationId,
+                        destinationSlug,
+                        destinationName,
+                        destinationCountry,
+                        destinationImageUrl,
+                        departureDate: new Date(departureDate),
+                        memberNumber: seats,
+                        totalPrice,
+                        status: "PENDING",
+                        createdAt: new Date(),
+                    });
+
+                    await destinationCollection.updateOne(
+                        { _id: new ObjectId(destinationId) },
+                        {
+                            $inc: {
+                                bookedSeats: seats
+                            }
+                        },
+                        { session }
+                    );
+
+                    result = booking;
+                });
+
+                await session.endSession();
+
+                return res.status(201).json({
+                    success: true,
+                    message: "Booking created successfully",
+                    data: result,
+                });
+
+            } catch (error) {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message || "Booking failed",
+                });
+            }
+        });
+
+        app.get("/booking/check", async (req, res) => {
+            const { userId, destinationId } = req.query;
+
+            const booking = await bookingCollection.findOne({
+                userId,
+                destinationId,
+            });
+
+            res.send({
+                booked: !!booking,
+            });
+        });
+
+        app.get("/booking/:userId", async (req, res) => {
+            try {
+                const {userId} = req.params;
+                
+                const bookings = await bookingCollection
+                    .find({ userId })
+                    .sort({ createdAt: -1 })
+                    .toArray();
+                res.json({
+                    success: true,
+                    data: bookings,
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    message: "Failed to fetch bookings",
                 });
             }
         });
