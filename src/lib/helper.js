@@ -9,7 +9,7 @@ export const generateSlug = (text) =>
     .replace(/[^\w\s-]/g, "")
     .replace(/(^-|-$)/g, "");
 
-const formatDate = (dateString) => {
+export const formatDate = (dateString) => {
     const date = new Date(dateString);
 
     const day = date.getDate();
