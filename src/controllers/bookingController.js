@@ -143,7 +143,7 @@ export const getBookingByUser = async (req, res) => {
         const { bookingCollection } = getCollections();
         const {userId} = req.params;
 
-            if (req.user.userId !== req.params.userId) {
+        if (req.user.id !== userId) {
             return res.status(403).json({
                 success: false,
                 message: "Forbidden"

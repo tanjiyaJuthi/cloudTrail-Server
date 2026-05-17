@@ -1,4 +1,5 @@
 import {getCollections} from '../db/collections.js';
+import { ObjectId } from "mongodb";
 
 // get all profiles
 export const getAllProfiles = async (req, res) => {
@@ -23,16 +24,20 @@ export const getAllProfiles = async (req, res) => {
 };
 
 // get profile by user name
-export const getProfileBySlug = async (req, res)  => {
+export const getSingleProfile = async (req, res)  => {
     try {
-        const {slug} = req.params;
+        const { profileCollection } = getCollections();
+        const userId = req.user?.id;
 
-        const normalizedSlug = slug.toLowerCase().trim();
-
-        const safeSlug = escapeRegex(normalizedSlug);
-
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
+    
         const result = await profileCollection.findOne({
-            slug: { $regex: `^${safeSlug}$`, $options: "i" }
+            _id: new ObjectId(userId)
         });
 
         if (!result) {
@@ -42,7 +47,6 @@ export const getProfileBySlug = async (req, res)  => {
             });
         }
         
-        // console.log(result);
         return res.status(200).json({
             success: true,
             message: "Profile fetched successfully",
@@ -50,7 +54,7 @@ export const getProfileBySlug = async (req, res)  => {
         });
 
     } catch (error) {
-        // console.error("GET /destination error:", error);
+        console.error("GET /profile by user error:", error);
 
         return res.status(500).json({
             success: false,
