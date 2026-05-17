@@ -101,7 +101,9 @@ export const addBooking = async (req, res) => {
 // check whether already booked or not
 export const bookingCheck = async (req, res) => {
     const { bookingCollection } = getCollections();
-    const { userId, destinationId } = req.query;
+    
+    const userId = req.user.id;
+    const { destinationId } = req.query;
 
     const booking = await bookingCollection.findOne({
         userId,

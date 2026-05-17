@@ -1,3 +1,5 @@
+import { ObjectId } from 'mongodb';
+
 import {getCollections} from '../db/collections.js';
 
 import { escapeRegex, generateSlug } from '../lib/helper.js';
@@ -132,6 +134,26 @@ export const updateDestination = async (req, res) => {
 
         const updatedDestination = req.body;
 
+        const allowedFields = [
+            "destinationName",
+            "country",
+            "category",
+            "price",
+            "duration",
+            "imageUrl",
+            "rating",
+            "reviewCount",
+            "description"
+        ];
+
+        const safeUpdate = {};
+
+        for (const key of allowedFields) {
+            if (updatedDestination[key] !== undefined) {
+                safeUpdate[key] = updatedDestination[key];
+            }
+        }
+
         if (!updatedDestination || Object.keys(updatedDestination).length === 0) {
             return res.status(400).json({
                 success: false,
@@ -156,7 +178,7 @@ export const updateDestination = async (req, res) => {
 
         await destinationCollection.updateOne(
             { _id: new ObjectId(id) },
-            { $set: updatedDestination }
+            { $set: safeUpdate }
         );
 
         const updatedDoc = await destinationCollection.findOne({
@@ -170,7 +192,7 @@ export const updateDestination = async (req, res) => {
         });
 
     } catch (error) {
-        // console.error("PATCH /destination error:", error);
+        console.error("PATCH /destination error:", error);
 
         return res.status(500).json({
             success: false,

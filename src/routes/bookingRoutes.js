@@ -21,7 +21,6 @@ bookingRoutes.post(
 bookingRoutes.get(
     "/check",
     verifyToken,
-    verifyAdmin,
     bookingCheck
 );
 
