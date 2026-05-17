@@ -1,12 +1,19 @@
 import {getCollections} from '../db/collections.js';
+import { ObjectId } from 'mongodb';
+import client from "../config/db.js";
 
 // book a destination
 export const addBooking = async (req, res) => {
+    const userId = req.user.id;
+    // console.log('user: ', req.user);
+    let session;
+    
     try {
-        const { bookingCollection } = getCollections();
+        session = client.startSession()
+
+        const { bookingCollection, destinationCollection } = getCollections();
 
         const {
-            userId,
             userName,
             userImage,
             destinationId,
@@ -20,6 +27,9 @@ export const addBooking = async (req, res) => {
         } = req.body;
 
         const seats = Number(memberNumber || 1);
+        if (seats < 1) {
+            throw new Error("Invalid member number");
+        }
 
         if (!userId || !destinationId || !departureDate) {
             return res.status(400).json({
@@ -28,11 +38,21 @@ export const addBooking = async (req, res) => {
             });
         }
 
-        const session = client.startSession();
-
         let result;
 
         await session.withTransaction(async () => {
+            const existingBooking = await bookingCollection.findOne(
+                {
+                    userId,
+                    destinationId,
+                },
+                { session }
+            );
+
+            if (existingBooking) {
+                throw new Error("You already booked this destination");
+            }
+
             const destination = await destinationCollection.findOne(
                 { _id: new ObjectId(destinationId) },
                 { session }
@@ -54,20 +74,22 @@ export const addBooking = async (req, res) => {
             }
 
             const booking = await bookingCollection.insertOne({
-                userId,
-                userName,
-                userImage,
-                destinationId,
-                destinationSlug,
-                destinationName,
-                destinationCountry,
-                destinationImageUrl,
-                departureDate: new Date(departureDate),
-                memberNumber: seats,
-                totalPrice,
-                status: "PENDING",
-                createdAt: new Date(),
-            });
+                    userId,
+                    userName,
+                    userImage,
+                    destinationId,
+                    destinationSlug,
+                    destinationName,
+                    destinationCountry,
+                    destinationImageUrl,
+                    departureDate: new Date(departureDate),
+                    memberNumber: seats,
+                    totalPrice,
+                    status: "PENDING",
+                    createdAt: new Date(),
+                },
+                { session }
+            );
 
             await destinationCollection.updateOne(
                 { _id: new ObjectId(destinationId) },
@@ -82,8 +104,6 @@ export const addBooking = async (req, res) => {
             result = booking;
         });
 
-        await session.endSession();
-
         return res.status(201).json({
             success: true,
             message: "Booking created successfully",
@@ -95,6 +115,8 @@ export const addBooking = async (req, res) => {
             success: false,
             message: error.message || "Booking failed",
         });
+    } finally {
+        if (session) await session.endSession();
     }
 }
 
